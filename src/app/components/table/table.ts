@@ -1910,11 +1910,11 @@ export class Table implements OnInit, AfterViewInit, AfterContentInit, Blockable
             let colWidth = index === colIndex ? newColumnWidth : (nextColumnWidth && index === colIndex + 1) ? nextColumnWidth : width;
             innerHTML += `
                 #${this.id} .p-datatable-thead > tr > th:nth-child(${index+1}) {
-                    flex: 0 0 ${colWidth}px;
+                    flex: 0 0 ${colWidth}px !important;
                 }
 
                 #${this.id} .p-datatable-tbody > tr > td:nth-child(${index+1}) {
-                    flex: 0 0 ${colWidth}px;
+                    flex: 0 0 ${colWidth}px !important;
                 }
             `
         });
@@ -3941,7 +3941,7 @@ export class TableHeaderCheckbox  {
         }
         else {
             const val = this.dt.value;
-            const length = this.dt.lazy ? this.dt._totalRecords : val?.length;
+            const length = this.dt.lazy ? this.dt._totalRecords : val ? val.length : 0;
             return (val && length > 0 && this.dt.selection && this.dt.selection.length > 0 && this.dt.selection.length === length);
         }
     }
