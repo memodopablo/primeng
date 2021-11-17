@@ -76,6 +76,7 @@ export const TREESELECT_VALUE_ACCESSOR: any = {
         ])
     ],
     host: {
+        'class': 'p-element p-inputwrapper',
         '[class.p-inputwrapper-filled]': '!emptyValue',
         '[class.p-inputwrapper-focus]': 'focused || overlayVisible'
     },
@@ -250,6 +251,15 @@ export class TreeSelect implements AfterContentInit {
             case 40:
                 if (!this.overlayVisible && event.altKey) {
                     this.show();
+                    event.preventDefault();
+                }
+                else if (this.overlayVisible && this.overlayEl) {
+                    let focusableElements = DomHandler.getFocusableElements(this.overlayEl);
+
+                    if (focusableElements && focusableElements.length > 0) {
+                        focusableElements[0].focus();
+                    }
+
                     event.preventDefault();
                 }
             break;

@@ -10,7 +10,10 @@ import Chart from 'chart.js/auto';
         </div>
     `,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    encapsulation: ViewEncapsulation.None
+    encapsulation: ViewEncapsulation.None,
+    host: {
+        'class': 'p-element'
+    }
 })
 export class UIChart implements AfterViewInit, OnDestroy {
 
@@ -82,7 +85,8 @@ export class UIChart implements AfterViewInit, OnDestroy {
         this.chart = new Chart(this.el.nativeElement.children[0].children[0], {
             type: this.type,
             data: this.data,
-            options: this.options
+            options: this.options,
+            plugins: this.plugins
         });
     }
 
