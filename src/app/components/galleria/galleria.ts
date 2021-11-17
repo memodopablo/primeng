@@ -4,23 +4,39 @@ import { SharedModule, PrimeTemplate, PrimeNGConfig } from 'primeng/api';
 import { UniqueComponentId, ZIndexUtils } from 'primeng/utils';
 import { DomHandler } from 'primeng/dom';
 import { RippleModule } from 'primeng/ripple';
+import { animate, style, transition, trigger, AnimationEvent } from '@angular/animations';
 
 @Component({
     selector: 'p-galleria',
     template: `
         <div *ngIf="fullScreen;else windowed">
-            <div *ngIf="visible" #mask [ngClass]="{'p-galleria-mask p-component-overlay':true, 'p-galleria-visible': this.visible}" [class]="maskClass">
-                <p-galleriaContent [value]="value" [activeIndex]="activeIndex" (maskHide)="onMaskHide()" (activeItemChange)="onActiveItemChange($event)" [ngStyle]="containerStyle"></p-galleriaContent>
+            <div *ngIf="maskVisible" #mask [ngClass]="{'p-galleria-mask p-component-overlay p-component-overlay-enter':true, 'p-galleria-visible': this.visible}" [class]="maskClass">
+                <p-galleriaContent *ngIf="visible" [@animation]="{value: 'visible', params: {showTransitionParams: showTransitionOptions, hideTransitionParams: hideTransitionOptions}}" (@animation.start)="onAnimationStart($event)" (@animation.done)="onAnimationEnd($event)"
+                    [value]="value" [activeIndex]="activeIndex" [numVisible]="numVisible" (maskHide)="onMaskHide()" (activeItemChange)="onActiveItemChange($event)" [ngStyle]="containerStyle"></p-galleriaContent>
             </div>
         </div>
 
         <ng-template #windowed>
-            <p-galleriaContent [value]="value" [activeIndex]="activeIndex" (activeItemChange)="onActiveItemChange($event)"></p-galleriaContent>
+            <p-galleriaContent [value]="value" [activeIndex]="activeIndex" [numVisible]="numVisible" (activeItemChange)="onActiveItemChange($event)"></p-galleriaContent>
         </ng-template>
     `,
+    animations: [
+        trigger('animation', [
+            transition('void => visible', [
+                style({ transform: 'scale(0.7)', opacity: 0 }),
+                animate('{{showTransitionParams}}')
+            ]),
+            transition('visible => void', [
+                animate('{{hideTransitionParams}}', style({ transform: 'scale(0.7)', opacity: 0 }))
+            ])
+        ])
+    ],
     changeDetection: ChangeDetectionStrategy.OnPush,
     encapsulation: ViewEncapsulation.None,
-    styleUrls: ['./galleria.css']
+    styleUrls: ['./galleria.css'],
+    host: {
+        'class': 'p-element'
+    }
 })
 export class Galleria implements OnChanges, OnDestroy {
 
@@ -76,6 +92,10 @@ export class Galleria implements OnChanges, OnDestroy {
 
     @Input() containerStyle: any;
 
+    @Input() showTransitionOptions: string = '150ms cubic-bezier(0, 0, 0.2, 1)';
+
+    @Input() hideTransitionOptions: string = '150ms cubic-bezier(0, 0, 0.2, 1)';
+
     @ViewChild('mask') mask: ElementRef;
 
     @Input() get visible(): boolean {
@@ -84,6 +104,10 @@ export class Galleria implements OnChanges, OnDestroy {
 
     set visible(visible: boolean) {
         this._visible = visible;
+
+        if (this._visible && !this.maskVisible) {
+            this.maskVisible = true;
+        }
     }
 
     @Output() activeIndexChange: EventEmitter<any> = new EventEmitter();
@@ -103,6 +127,8 @@ export class Galleria implements OnChanges, OnDestroy {
     indicatorFacet: any;
 
     captionFacet: any;
+
+    maskVisible: boolean = false;
 
     constructor(public element: ElementRef, public cd: ChangeDetectorRef, public config: PrimeNGConfig) { }
 
@@ -126,21 +152,8 @@ export class Galleria implements OnChanges, OnDestroy {
     }
 
     ngOnChanges(simpleChanges: SimpleChanges) {
-        if (this.fullScreen && simpleChanges.visible) {
-            if (simpleChanges.visible.currentValue) {
-                DomHandler.addClass(document.body, 'p-overflow-hidden');
-                this.cd.detectChanges();
-
-                if (this.mask) {
-                    ZIndexUtils.set('modal', this.mask.nativeElement, this.baseZIndex || this.config.zIndex.modal);
-                }
-            }
-            else {
-                DomHandler.removeClass(document.body, 'p-overflow-hidden');
-                if (this.mask) {
-                    ZIndexUtils.clear(this.mask.nativeElement);
-                }
-            }
+        if (simpleChanges.value && simpleChanges.value.currentValue?.length < this.numVisible) {
+            this.numVisible = simpleChanges.value.currentValue.length;
         }
     }
 
@@ -156,13 +169,52 @@ export class Galleria implements OnChanges, OnDestroy {
         }
     }
 
+    onAnimationStart(event: AnimationEvent) {
+        switch(event.toState) {
+            case 'visible':
+                this.enableModality();
+            break;
+
+            case 'void':
+                DomHandler.addClass(this.mask.nativeElement, 'p-component-overlay-leave');
+            break;
+        }
+    }
+
+    onAnimationEnd(event: AnimationEvent) {
+        switch(event.toState) {
+            case 'void':
+               this.disableModality();
+            break;
+        }
+    }
+
+    enableModality() {
+        DomHandler.addClass(document.body, 'p-overflow-hidden');
+        this.cd.markForCheck();
+
+        if (this.mask) {
+            ZIndexUtils.set('modal', this.mask.nativeElement, this.baseZIndex || this.config.zIndex.modal);
+        }
+    }
+
+    disableModality() {
+        DomHandler.removeClass(document.body, 'p-overflow-hidden');
+        this.maskVisible = false;
+        this.cd.markForCheck();
+
+        if (this.mask) {
+            ZIndexUtils.clear(this.mask.nativeElement);
+        }
+    }
+
     ngOnDestroy() {
         if (this.fullScreen) {
             DomHandler.removeClass(document.body, 'p-overflow-hidden');
         }
 
         if (this.mask) {
-            ZIndexUtils.clear(this.mask);
+            this.disableModality()
         }
     }
 }
@@ -186,7 +238,7 @@ export class Galleria implements OnChanges, OnDestroy {
                     (startSlideShow)="startSlideShow()" (stopSlideShow)="stopSlideShow()"></p-galleriaItem>
 
                 <p-galleriaThumbnails *ngIf="galleria.showThumbnails" [containerId]="id" [value]="value" (onActiveIndexChange)="onActiveIndexChange($event)" [activeIndex]="activeIndex" [templates]="galleria.templates"
-                    [numVisible]="galleria.numVisible" [responsiveOptions]="galleria.responsiveOptions" [circular]="galleria.circular"
+                    [numVisible]="numVisible" [responsiveOptions]="galleria.responsiveOptions" [circular]="galleria.circular"
                     [isVertical]="isVertical()" [contentHeight]="galleria.verticalThumbnailViewPortHeight" [showThumbnailNavigators]="galleria.showThumbnailNavigators"
                     [slideShowActive]="slideShowActive" (stopSlideShow)="stopSlideShow()"></p-galleriaThumbnails>
             </div>
@@ -208,6 +260,8 @@ export class GalleriaContent {
     }
 
     @Input() value: any[] = [];
+
+    @Input() numVisible: number;
 
     @Output() maskHide: EventEmitter<any> = new EventEmitter();
 

@@ -51,7 +51,10 @@ import { ZIndexUtils } from 'primeng/utils';
         ])
     ],
     encapsulation: ViewEncapsulation.None,
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    host: {
+        'class': 'p-element'
+    }
 })
 export class ToastItem implements AfterViewInit, OnDestroy {
 
@@ -130,7 +133,7 @@ export class ToastItem implements AfterViewInit, OnDestroy {
     template: `
         <div #container [ngClass]="'p-toast p-component p-toast-' + position" [ngStyle]="style" [class]="styleClass">
             <p-toastItem *ngFor="let msg of messages; let i=index" [message]="msg" [index]="i" (onClose)="onMessageClose($event)"
-                    [template]="template" @toastAnimation (@toastAnimation.start)="onAnimationStart($event)"
+                    [template]="template" @toastAnimation (@toastAnimation.start)="onAnimationStart($event)" (@toastAnimation.done)="onAnimationEnd($event)"
                     [showTransformOptions]="showTransformOptions" [hideTransformOptions]="hideTransformOptions"
                     [showTransitionOptions]="showTransitionOptions" [hideTransitionOptions]="hideTransitionOptions"></p-toastItem>
         </div>
@@ -144,7 +147,10 @@ export class ToastItem implements AfterViewInit, OnDestroy {
     ],
     changeDetection: ChangeDetectionStrategy.OnPush,
     encapsulation: ViewEncapsulation.None,
-    styleUrls: ['./toast.css']
+    styleUrls: ['./toast.css'],
+    host: {
+        'class': 'p-element'
+    }
 })
 export class Toast implements OnInit,AfterContentInit,OnDestroy {
 
@@ -224,9 +230,6 @@ export class Toast implements OnInit,AfterContentInit,OnDestroy {
     }
 
     ngAfterViewInit() {
-        if (this.autoZIndex) {
-            ZIndexUtils.set('modal', this.containerViewChild.nativeElement, this.baseZIndex || this.config.zIndex.modal);
-        }
         if (this.breakpoints) {
             this.createStyle();
         }
@@ -291,10 +294,20 @@ export class Toast implements OnInit,AfterContentInit,OnDestroy {
     }
 
     onAnimationStart(event: AnimationEvent) {
-        if (event.fromState === 'void' && this.autoZIndex) {
-            this.containerViewChild.nativeElement.style.zIndex = String(this.baseZIndex + (++DomHandler.zindex));
+        if (event.fromState === 'void') {
             this.containerViewChild.nativeElement.setAttribute(this.id, '');
 
+            if (this.autoZIndex) {
+                ZIndexUtils.set('modal', this.containerViewChild.nativeElement, this.baseZIndex || this.config.zIndex.modal);
+            }
+        }
+    }
+
+    onAnimationEnd(event: AnimationEvent) {
+        if (event.toState === 'void') {
+            if (this.autoZIndex) {
+                ZIndexUtils.clear(this.containerViewChild.nativeElement);
+            }
         }
     }
 

@@ -22,7 +22,10 @@ export interface TooltipOptions {
 }
 
 @Directive({
-    selector: '[pTooltip]'
+    selector: '[pTooltip]',
+    host: {
+        'class': 'p-element'
+    }
 })
 export class Tooltip implements AfterViewInit, OnDestroy {
 
@@ -155,7 +158,7 @@ export class Tooltip implements AfterViewInit, OnDestroy {
         }
 
         if (simpleChange.hideDelay) {
-            this.setOption({showDelay: simpleChange.hideDelay.currentValue});
+            this.setOption({hideDelay: simpleChange.hideDelay.currentValue});
         }
 
         if (simpleChange.life) {

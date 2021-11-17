@@ -27,7 +27,10 @@ export const DROPDOWN_VALUE_ACCESSOR: any = {
             <span *ngIf="!template">{{label||'empty'}}</span>
             <ng-container *ngTemplateOutlet="template; context: {$implicit: option}"></ng-container>
         </li>
-    `
+    `,
+    host: {
+        'class': 'p-element'
+    }
 })
 export class DropdownItem {
 
@@ -87,7 +90,7 @@ export class DropdownItem {
                     </div>
                 </div>
                 <div class="p-dropdown-items-wrapper" [style.max-height]="virtualScroll ? 'auto' : (scrollHeight||'auto')">
-                    <ul class="p-dropdown-items" [ngClass]="{'p-dropdown-virtualscroll': virtualScroll}" role="listbox">
+                    <ul [attr.id]="listId" class="p-dropdown-items" [ngClass]="{'p-dropdown-virtualscroll': virtualScroll}" role="listbox">
                         <ng-container *ngIf="group">
                             <ng-template ngFor let-optgroup [ngForOf]="optionsToDisplay">
                                 <li class="p-dropdown-item-group">
@@ -148,6 +151,7 @@ export class DropdownItem {
         ])
     ],
     host: {
+        'class': 'p-element p-inputwrapper',
         '[class.p-inputwrapper-filled]': 'filled',
         '[class.p-inputwrapper-focus]': 'focused || overlayVisible'
     },
@@ -178,7 +182,7 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
 
     @Input() editable: boolean;
 
-    @Input() appendTo: any = "body";
+    @Input() appendTo: any;
 
     @Input() tabindex: number;
 
@@ -265,6 +269,8 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
     @Output() onShow: EventEmitter<any> = new EventEmitter();
 
     @Output() onHide: EventEmitter<any> = new EventEmitter();
+
+    @Output() onClear: EventEmitter<any> = new EventEmitter();
 
     @ViewChild('container') containerViewChild: ElementRef;
 
@@ -374,6 +380,8 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
 
     labelId: string;
 
+    listId: string;
+
     constructor(public el: ElementRef, public renderer: Renderer2, public cd: ChangeDetectorRef, public zone: NgZone, public filterService: FilterService, public config: PrimeNGConfig, public overlayService: OverlayService) {}
 
     ngAfterContentInit() {
@@ -417,7 +425,8 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
     ngOnInit() {
         this.optionsToDisplay = this.options;
         this.updateSelectedOption(null);
-        this.labelId = this.id + '_label'
+        this.labelId = this.id + '_label';
+        this.listId = this.id + '_list';
     }
 
     @Input() get options(): any[] {
@@ -581,9 +590,13 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
 
     updateSelectedOption(val: any): void {
         this.selectedOption = this.findOption(val, this.optionsToDisplay);
+
         if (this.autoDisplayFirst && !this.placeholder && !this.selectedOption && this.optionsToDisplay && this.optionsToDisplay.length && !this.editable) {
             this.selectedOption = this.optionsToDisplay[0];
+            this.value = this.getOptionValue(this.selectedOption);
+            this.onModelChange(this.value);
         }
+
         this.selectedOptionUpdated = true;
     }
 
@@ -669,7 +682,7 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
                 this.itemsWrapper = DomHandler.findSingle(this.overlay, itemsWrapperSelector);
                 this.appendOverlay();
                 if (this.autoZIndex) {
-                    ZIndexUtils.set('overlay', this.overlay, this.config.zIndex.overlay);
+                    ZIndexUtils.set('overlay', this.overlay, this.baseZIndex + this.config.zIndex.overlay);
                 }
                 this.alignOverlay();
                 this.bindDocumentClickListener();
@@ -679,8 +692,9 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
                 if (this.options && this.options.length) {
                     if (!this.virtualScroll) {
                         let selectedListItem = DomHandler.findSingle(this.itemsWrapper, '.p-dropdown-item.p-highlight');
+
                         if (selectedListItem) {
-                            DomHandler.scrollInView(this.itemsWrapper, selectedListItem);
+                            selectedListItem.scrollIntoView({ block: 'nearest', inline: 'start' });
                         }
                     }
                 }
@@ -934,15 +948,16 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
 
             //space
             case 32:
-            case 32:
-                if (!this.overlayVisible){
-                    this.show();
-                }
-                else {
-                    this.hide();
-                }
+                if (search) {
+                    if (!this.overlayVisible){
+                        this.show();
+                    }
+                    else {
+                        this.hide();
+                    }
 
-                event.preventDefault();
+                    event.preventDefault();
+                }
             break;
 
             //enter
@@ -1199,7 +1214,7 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
     }
 
     onWindowResize() {
-        if (!DomHandler.isAndroid()) {
+        if (this.overlayVisible && !DomHandler.isTouchDevice()) {
             this.hide();
         }
     }
@@ -1231,6 +1246,7 @@ export class Dropdown implements OnInit,AfterViewInit,AfterContentInit,AfterView
         });
         this.updateSelectedOption(this.value);
         this.updateEditableLabel();
+        this.onClear.emit(event);
     }
 
     onOverlayHide() {

@@ -31,7 +31,10 @@ export const MULTISELECT_VALUE_ACCESSOR: any = {
             <ng-container *ngTemplateOutlet="template; context: {$implicit: option}"></ng-container>
         </li>
     `,
-    encapsulation: ViewEncapsulation.None
+    encapsulation: ViewEncapsulation.None,
+    host: {
+        'class': 'p-element'
+    }
 })
 export class MultiSelectItem {
 
@@ -105,7 +108,7 @@ export class MultiSelectItem {
                     <ng-container *ngTemplateOutlet="headerTemplate"></ng-container>
                     <div class="p-checkbox p-component" *ngIf="showToggleAll && !selectionLimit" [ngClass]="{'p-checkbox-disabled': disabled || toggleAllDisabled}">
                         <div class="p-hidden-accessible">
-                            <input type="checkbox" readonly="readonly" [checked]="allChecked" (focus)="onHeaderCheckboxFocus()" (blur)="onHeaderCheckboxBlur()" (keydown.space)="toggleAll($event)" [attr.disabled]="disabled || toggleAllDisabled">
+                            <input type="checkbox" readonly="readonly" [checked]="allChecked" (focus)="onHeaderCheckboxFocus()" (blur)="onHeaderCheckboxBlur()" (keydown.space)="toggleAll($event)" [disabled]="disabled || toggleAllDisabled">
                         </div>
                         <div class="p-checkbox-box" role="checkbox" [attr.aria-checked]="allChecked" [ngClass]="{'p-highlight':allChecked, 'p-focus': headerCheckboxFocus, 'p-disabled': disabled || toggleAllDisabled}" (click)="toggleAll($event)">
                             <span class="p-checkbox-icon" [ngClass]="{'pi pi-check':allChecked}"></span>
@@ -182,6 +185,7 @@ export class MultiSelectItem {
         ])
     ],
     host: {
+        'class': 'p-element p-inputwrapper',
         '[class.p-inputwrapper-filled]': 'filled',
         '[class.p-inputwrapper-focus]': 'focus || overlayVisible'
     },
@@ -770,7 +774,8 @@ export class MultiSelect implements OnInit,AfterViewInit,AfterContentInit,AfterV
     removeChip(chip: any, event: MouseEvent) {
         this.value = this.value.filter(val => !ObjectUtils.equals(val, chip, this.dataKey));
         this.onModelChange(this.value);
-        this.onChange.emit({ originalEvent: event, value: this.value });
+        this.checkSelectionLimit();
+        this.onChange.emit({originalEvent: event, value: this.value, itemValue: chip});
         this.updateLabel();
         this.updateFilledState();
     }
@@ -1029,6 +1034,8 @@ export class MultiSelect implements OnInit,AfterViewInit,AfterContentInit,AfterV
         this._filterValue = (<HTMLInputElement> event.target).value;
         this.activateFilter();
         this.onFilter.emit({originalEvent: event, filter: this._filterValue});
+        this.cd.detectChanges();
+        this.alignOverlay();
     }
 
     activateFilter() {
